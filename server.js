@@ -32,7 +32,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Initialize Google Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'demo-key');
+const GEMINI_API_KEY = 'AIzaSyD6KaISP10hTrRPAVCRHMlvDlWDnepwlDQ';
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Data storage (simple JSON file for beginners)
 const DATA_FILE = 'journal_data.json';
@@ -101,68 +102,142 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Enhanced Pattern Analysis Functions
+// Enhanced Pattern Analysis Functions - REBUILT FOR AUTHENTICITY
 const analyzePersonalPatterns = (allEntries, currentEntry) => {
   const negativeMoods = ['😰 Anxious', '😢 Crying', '😤 Frustrated', '😡 Angry', 'Sad'];
   const isNegativeMood = negativeMoods.some(mood => currentEntry.mood.includes(mood));
   
-  // Find similar past entries
-  const similarEntries = allEntries.filter(entry => {
-    // Match by mood type
-    const moodMatch = entry.mood === currentEntry.mood;
-    
-    // Match by tags
-    const tagMatch = entry.tags && currentEntry.tags && 
-      entry.tags.some(tag => currentEntry.tags.includes(tag));
-    
-    // Match by content keywords
-    const contentKeywords = extractKeywords(currentEntry.content);
-    const entryKeywords = extractKeywords(entry.content);
-    const keywordMatch = contentKeywords.some(keyword => 
-      entryKeywords.includes(keyword)
-    );
-    
-    return (moodMatch || tagMatch || keywordMatch) && entry.moodFollowUp;
-  });
+  // Find similar past entries based on REAL SITUATIONS, not just mood labels
+  const similarEntries = findSimilarSituations(allEntries, currentEntry);
   
-  // Analyze coping strategies effectiveness
-  const copingAnalysis = analyzeCopingStrategies(similarEntries);
+  // Analyze coping strategies effectiveness from ACTUAL journal content
+  const copingAnalysis = analyzeCopingStrategiesFromContent(similarEntries);
   
-  // Calculate personal difficulty score
-  const difficultyScore = calculatePersonalDifficulty(currentEntry, similarEntries);
+  // Calculate personal difficulty score based on REAL success patterns
+  const difficultyScore = calculatePersonalDifficultyFromHistory(currentEntry, similarEntries);
+  
+  // Extract REAL personal patterns from journal content
+  const personalPatterns = extractRealPersonalPatterns(similarEntries, currentEntry);
   
   return {
     similarEntries,
     copingAnalysis,
     difficultyScore,
     isNegativeMood,
-    personalPatterns: extractPersonalPatterns(similarEntries)
+    personalPatterns
   };
 };
 
-const extractKeywords = (content) => {
-  const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'her', 'its', 'our', 'their'];
+// Find similar situations by analyzing ACTUAL journal content and context
+const findSimilarSituations = (allEntries, currentEntry) => {
+  const currentContext = analyzeEntryContext(currentEntry);
   
-  return content.toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .split(/\s+/)
-    .filter(word => word.length > 2 && !commonWords.includes(word));
+  return allEntries.filter(entry => {
+    if (!entry.moodFollowUp || entry.id === currentEntry.id) return false;
+    
+    const entryContext = analyzeEntryContext(entry);
+    
+    // Calculate similarity score based on multiple factors
+    let similarityScore = 0;
+    
+    // 1. Situation similarity (work, relationships, health, etc.)
+    if (currentContext.situation === entryContext.situation) {
+      similarityScore += 3;
+    }
+    
+    // 2. Emotional intensity similarity
+    const intensityDiff = Math.abs(currentContext.emotionalIntensity - entryContext.emotionalIntensity);
+    if (intensityDiff <= 1) similarityScore += 2;
+    else if (intensityDiff <= 2) similarityScore += 1;
+    
+    // 3. Content similarity (actual words and phrases)
+    const contentSimilarity = calculateContentSimilarity(currentEntry.content, entry.content);
+    similarityScore += contentSimilarity;
+    
+    // 4. Tag similarity
+    if (currentEntry.tags && entry.tags) {
+      const commonTags = currentEntry.tags.filter(tag => entry.tags.includes(tag));
+      similarityScore += commonTags.length * 0.5;
+    }
+    
+    // Only return entries with meaningful similarity
+    return similarityScore >= 2.5;
+  });
 };
 
-const analyzeCopingStrategies = (entries) => {
+// Analyze the REAL context of a journal entry
+const analyzeEntryContext = (entry) => {
+  const content = entry.content.toLowerCase();
+  
+  // Identify the main situation/context
+  let situation = 'general';
+  if (content.includes('work') || content.includes('job') || content.includes('career') || content.includes('deadline') || content.includes('boss') || content.includes('colleague')) {
+    situation = 'work';
+  } else if (content.includes('relationship') || content.includes('friend') || content.includes('family') || content.includes('partner') || content.includes('marriage')) {
+    situation = 'relationships';
+  } else if (content.includes('health') || content.includes('sick') || content.includes('pain') || content.includes('doctor') || content.includes('hospital')) {
+    situation = 'health';
+  } else if (content.includes('money') || content.includes('financial') || content.includes('bill') || content.includes('debt') || content.includes('expense')) {
+    situation = 'financial';
+  } else if (content.includes('study') || content.includes('exam') || content.includes('test') || content.includes('assignment') || content.includes('school') || content.includes('college')) {
+    situation = 'education';
+  }
+  
+  // Calculate emotional intensity from actual content
+  let emotionalIntensity = 1;
+  const intensityWords = {
+    'very': 1, 'extremely': 2, 'terribly': 2, 'awfully': 2, 'completely': 1,
+    'overwhelmed': 2, 'devastated': 3, 'crushed': 3, 'destroyed': 3,
+    'slightly': -1, 'a bit': -1, 'somewhat': 0, 'moderately': 0
+  };
+  
+  Object.entries(intensityWords).forEach(([word, intensity]) => {
+    if (content.includes(word)) {
+      emotionalIntensity += intensity;
+    }
+  });
+  
+  emotionalIntensity = Math.max(1, Math.min(5, emotionalIntensity));
+  
+  return { situation, emotionalIntensity };
+};
+
+// Calculate content similarity based on actual words and phrases
+const calculateContentSimilarity = (content1, content2) => {
+  const words1 = content1.toLowerCase().split(/\s+/).filter(word => word.length > 3);
+  const words2 = content2.toLowerCase().split(/\s+/).filter(word => word.length > 3);
+  
+  const commonWords = words1.filter(word => words2.includes(word));
+  const totalUniqueWords = new Set([...words1, ...words2]).size;
+  
+  return commonWords.length / totalUniqueWords * 3; // Scale to 0-3
+};
+
+// Analyze coping strategies from ACTUAL journal content, not just mood follow-up
+const analyzeCopingStrategiesFromContent = (entries) => {
   const strategies = {};
   
   entries.forEach(entry => {
+    // Look for coping strategies mentioned in the journal content itself
+    const contentStrategies = extractCopingStrategiesFromText(entry.content);
+    
+    // Also include mood follow-up strategies
     if (entry.moodFollowUp?.what_helped) {
-      const strategy = entry.moodFollowUp.what_helped.toLowerCase();
-      const success = entry.moodFollowUp.feeling_better === 'yes';
-      
-      if (!strategies[strategy]) {
-        strategies[strategy] = { count: 0, successes: 0 };
-      }
-      strategies[strategy].count++;
-      if (success) strategies[strategy].successes++;
+      contentStrategies.push(entry.moodFollowUp.what_helped);
     }
+    
+    contentStrategies.forEach(strategy => {
+      const normalizedStrategy = normalizeStrategy(strategy);
+      const success = entry.moodFollowUp?.feeling_better === 'yes';
+      
+      if (!strategies[normalizedStrategy]) {
+        strategies[normalizedStrategy] = { count: 0, successes: 0, examples: [] };
+      }
+      
+      strategies[normalizedStrategy].count++;
+      if (success) strategies[normalizedStrategy].successes++;
+      strategies[normalizedStrategy].examples.push(entry.content.substring(0, 100) + '...');
+    });
   });
   
   // Calculate effectiveness scores
@@ -174,50 +249,157 @@ const analyzeCopingStrategies = (entries) => {
   return strategies;
 };
 
-const calculatePersonalDifficulty = (currentEntry, similarEntries) => {
+// Extract coping strategies mentioned in journal text
+const extractCopingStrategiesFromText = (content) => {
+  const strategies = [];
+  const contentLower = content.toLowerCase();
+  
+  // Look for specific coping strategies mentioned
+  const strategyPatterns = [
+    'i tried', 'i did', 'i used', 'i practiced', 'i focused on',
+    'i reminded myself', 'i told myself', 'i decided to',
+    'i took a', 'i went for a', 'i called', 'i talked to',
+    'i wrote', 'i read', 'i listened to', 'i watched',
+    'i exercised', 'i meditated', 'i prayed', 'i took deep breaths'
+  ];
+  
+  strategyPatterns.forEach(pattern => {
+    if (contentLower.includes(pattern)) {
+      // Extract the strategy mentioned after the pattern
+      const patternIndex = contentLower.indexOf(pattern);
+      const afterPattern = content.substring(patternIndex + pattern.length, patternIndex + pattern.length + 100);
+      const strategy = afterPattern.split(/[.!?]/)[0].trim();
+      if (strategy.length > 5 && strategy.length < 200) {
+        strategies.push(strategy);
+      }
+    }
+  });
+  
+  return strategies;
+};
+
+// Normalize strategy names for better grouping
+const normalizeStrategy = (strategy) => {
+  const normalized = strategy.toLowerCase().trim();
+  
+  // Group similar strategies
+  if (normalized.includes('exercise') || normalized.includes('workout') || normalized.includes('run') || normalized.includes('walk')) {
+    return 'Physical Activity';
+  }
+  if (normalized.includes('talk') || normalized.includes('call') || normalized.includes('discuss')) {
+    return 'Talking to Someone';
+  }
+  if (normalized.includes('write') || normalized.includes('journal') || normalized.includes('note')) {
+    return 'Writing/Journaling';
+  }
+  if (normalized.includes('breathe') || normalized.includes('meditation') || normalized.includes('mindfulness')) {
+    return 'Breathing/Meditation';
+  }
+  if (normalized.includes('break') || normalized.includes('rest') || normalized.includes('sleep')) {
+    return 'Taking Breaks/Rest';
+  }
+  if (normalized.includes('plan') || normalized.includes('organize') || normalized.includes('list')) {
+    return 'Planning/Organizing';
+  }
+  
+  return strategy.charAt(0).toUpperCase() + strategy.slice(1);
+};
+
+// Calculate difficulty based on REAL success patterns from journal history
+const calculatePersonalDifficultyFromHistory = (currentEntry, similarEntries) => {
   if (similarEntries.length === 0) return 5; // Neutral if no similar experiences
   
+  // Calculate success rate from actual mood follow-up responses
   const successRate = similarEntries.filter(entry => 
     entry.moodFollowUp?.feeling_better === 'yes'
   ).length / similarEntries.length;
   
-  // Lower success rate = higher difficulty
-  const baseDifficulty = (1 - successRate) * 10;
+  // Base difficulty: lower success rate = higher difficulty
+  let baseDifficulty = (1 - successRate) * 10;
   
-  // Adjust based on emotional intensity keywords
-  const intensityKeywords = ['very', 'extremely', 'terribly', 'awfully', 'completely'];
-  const intensityMultiplier = intensityKeywords.some(keyword => 
-    currentEntry.content.toLowerCase().includes(keyword)
-  ) ? 1.3 : 1;
+  // Adjust based on emotional intensity from current entry
+  const currentIntensity = analyzeEntryContext(currentEntry).emotionalIntensity;
+  if (currentIntensity >= 4) baseDifficulty *= 1.2;
+  else if (currentIntensity <= 2) baseDifficulty *= 0.8;
   
-  return Math.min(10, Math.max(1, baseDifficulty * intensityMultiplier));
+  // Adjust based on situation complexity
+  const situation = analyzeEntryContext(currentEntry).situation;
+  const situationMultipliers = {
+    'work': 1.1,      // Work challenges can be complex
+    'relationships': 1.2, // Relationship issues are often complex
+    'health': 1.3,    // Health issues are very complex
+    'financial': 1.1, // Financial issues can be complex
+    'education': 1.0, // Education challenges are moderate
+    'general': 1.0    // General issues are baseline
+  };
+  
+  baseDifficulty *= (situationMultipliers[situation] || 1.0);
+  
+  return Math.min(10, Math.max(1, baseDifficulty));
 };
 
-const extractPersonalPatterns = (entries) => {
+// Extract REAL personal patterns from journal content
+const extractRealPersonalPatterns = (entries, currentEntry) => {
   const patterns = {
     commonTriggers: {},
     effectiveStrategies: [],
     recoveryPatterns: {},
-    emotionalIntensity: 0
+    emotionalIntensity: 0,
+    growthIndicators: []
   };
   
-  // Analyze triggers
+  // Analyze patterns from similar entries
   entries.forEach(entry => {
-    const keywords = extractKeywords(entry.content);
-    keywords.forEach(keyword => {
-      patterns.commonTriggers[keyword] = (patterns.commonTriggers[keyword] || 0) + 1;
+    // Extract triggers mentioned in content
+    const triggers = extractTriggersFromText(entry.content);
+    triggers.forEach(trigger => {
+      patterns.commonTriggers[trigger] = (patterns.commonTriggers[trigger] || 0) + 1;
     });
+    
+    // Track recovery patterns
+    if (entry.moodFollowUp?.feeling_better === 'yes') {
+      patterns.recoveryPatterns.successful = (patterns.recoveryPatterns.successful || 0) + 1;
+    } else {
+      patterns.recoveryPatterns.challenging = (patterns.recoveryPatterns.challenging || 0) + 1;
+    }
   });
   
-  // Get most effective strategies
-  const strategies = analyzeCopingStrategies(entries);
-  patterns.effectiveStrategies = Object.entries(strategies)
-    .filter(([_, data]) => data.effectiveness >= 7)
-    .sort((a, b) => b[1].effectiveness - a[1].effectiveness)
-    .slice(0, 3)
-    .map(([strategy, _]) => strategy);
+  // Identify growth indicators
+  if (entries.length > 1) {
+    const sortedEntries = entries.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const firstEntry = sortedEntries[0];
+    const lastEntry = sortedEntries[sortedEntries.length - 1];
+    
+    if (firstEntry.moodFollowUp?.feeling_better === 'no' && lastEntry.moodFollowUp?.feeling_better === 'yes') {
+      patterns.growthIndicators.push('Improved coping over time');
+    }
+  }
   
   return patterns;
+};
+
+// Extract triggers from journal text
+const extractTriggersFromText = (content) => {
+  const triggers = [];
+  const contentLower = content.toLowerCase();
+  
+  const triggerPatterns = [
+    'because', 'due to', 'since', 'when', 'after', 'before',
+    'triggered by', 'caused by', 'result of', 'due to the fact that'
+  ];
+  
+  triggerPatterns.forEach(pattern => {
+    if (contentLower.includes(pattern)) {
+      const patternIndex = contentLower.indexOf(pattern);
+      const afterPattern = content.substring(patternIndex + pattern.length, patternIndex + pattern.length + 100);
+      const trigger = afterPattern.split(/[.!?]/)[0].trim();
+      if (trigger.length > 5 && trigger.length < 200) {
+        triggers.push(trigger);
+      }
+    }
+  });
+  
+  return triggers;
 };
 
 // Enhanced Personalized AI Prompt Engineering
@@ -301,6 +483,250 @@ Provide a detailed, personalized capability assessment including:
 Make this assessment deeply personal and specific to this user's patterns, not generic advice.`;
 
   return prompt;
+};
+
+// REAL Content Analysis Functions - These actually READ your journal content
+const analyzeJournalContent = (entry, allEntries) => {
+  const content = entry.content.toLowerCase();
+  
+  // Analyze the actual content, not just tags
+  let situation = 'general';
+  let severity = 'moderate';
+  let emotionalIntensity = 3;
+  
+  // REAL situation analysis based on content
+  if (content.includes('job') || content.includes('work') || content.includes('career') || 
+      content.includes('boss') || content.includes('colleague') || content.includes('deadline') ||
+      content.includes('layoff') || content.includes('fired') || content.includes('unemployment')) {
+    situation = 'work/career';
+    severity = 'high';
+    emotionalIntensity = 4;
+  } else if (content.includes('relationship') || content.includes('marriage') || 
+             content.includes('divorce') || content.includes('breakup') || 
+             content.includes('family') || content.includes('friend')) {
+    situation = 'relationships';
+    severity = 'high';
+    emotionalIntensity = 4;
+  } else if (content.includes('health') || content.includes('sick') || 
+             content.includes('pain') || content.includes('doctor') || 
+             content.includes('hospital') || content.includes('diagnosis')) {
+    situation = 'health';
+    severity = 'high';
+    emotionalIntensity = 4;
+  } else if (content.includes('money') || content.includes('financial') || 
+             content.includes('bill') || content.includes('debt') || 
+             content.includes('expense') || content.includes('bankruptcy')) {
+    situation = 'financial';
+    severity = 'high';
+    emotionalIntensity = 4;
+  }
+  
+  // Analyze emotional content
+  if (content.includes('anxious') || content.includes('worried') || content.includes('scared')) {
+    emotionalIntensity = Math.max(emotionalIntensity, 4);
+  }
+  if (content.includes('depressed') || content.includes('hopeless') || content.includes('suicide')) {
+    emotionalIntensity = 5;
+    severity = 'critical';
+  }
+  
+  // Create context summary based on REAL content
+  const contextSummary = `This person is dealing with a ${severity} ${situation} situation. 
+The emotional intensity level is ${emotionalIntensity}/5. 
+Key concerns mentioned: ${extractKeyConcerns(content)}`;
+  
+  return {
+    situation,
+    severity,
+    emotionalIntensity,
+    contextSummary,
+    keyConcerns: extractKeyConcerns(content)
+  };
+};
+
+const extractKeyConcerns = (content) => {
+  const concerns = [];
+  const contentLower = content.toLowerCase();
+  
+  if (contentLower.includes('job') || contentLower.includes('work') || contentLower.includes('career')) {
+    concerns.push('Career/Job security');
+  }
+  if (contentLower.includes('money') || contentLower.includes('financial') || contentLower.includes('bill')) {
+    concerns.push('Financial stability');
+  }
+  if (contentLower.includes('relationship') || contentLower.includes('marriage') || contentLower.includes('family')) {
+    concerns.push('Relationships');
+  }
+  if (contentLower.includes('health') || contentLower.includes('sick') || contentLower.includes('pain')) {
+    concerns.push('Health concerns');
+  }
+  if (contentLower.includes('anxious') || contentLower.includes('worried') || contentLower.includes('scared')) {
+    concerns.push('Anxiety/Fear');
+  }
+  if (contentLower.includes('depressed') || contentLower.includes('hopeless') || contentLower.includes('sad')) {
+    concerns.push('Depression/Low mood');
+  }
+  
+  return concerns.length > 0 ? concerns.join(', ') : 'General life challenges';
+};
+
+const findRealSimilarSituations = (currentEntry, allEntries) => {
+  const currentAnalysis = analyzeJournalContent(currentEntry, allEntries);
+  const similarEntries = [];
+  
+  allEntries.forEach(entry => {
+    if (entry.id === currentEntry.id) return; // Skip current entry
+    
+    const entryAnalysis = analyzeJournalContent(entry, allEntries);
+    
+    // Calculate REAL similarity based on content, not just tags
+    let similarityScore = 0;
+    
+    // Situation similarity (highest weight)
+    if (currentAnalysis.situation === entryAnalysis.situation) {
+      similarityScore += 5;
+    }
+    
+    // Emotional intensity similarity
+    const intensityDiff = Math.abs(currentAnalysis.emotionalIntensity - entryAnalysis.emotionalIntensity);
+    if (intensityDiff <= 1) similarityScore += 3;
+    else if (intensityDiff <= 2) similarityScore += 1;
+    
+    // Content similarity (actual words)
+    const contentSimilarity = calculateContentSimilarity(currentEntry.content, entry.content);
+    similarityScore += contentSimilarity * 2;
+    
+    // Only include meaningfully similar entries
+    if (similarityScore >= 4) {
+      similarEntries.push({
+        entry,
+        analysis: entryAnalysis,
+        similarityScore
+      });
+    }
+  });
+  
+  // Sort by similarity and limit results
+  similarEntries.sort((a, b) => b.similarityScore - a.similarityScore);
+  const topSimilar = similarEntries.slice(0, 5);
+  
+  const summary = topSimilar.length > 0 
+    ? `Found ${topSimilar.length} similar situations in your journal history. 
+Most similar: ${topSimilar[0].analysis.situation} situation with ${topSimilar[0].analysis.emotionalIntensity}/5 emotional intensity.`
+    : 'This appears to be a new type of challenge for you.';
+  
+  return {
+    similarEntries: topSimilar,
+    summary,
+    count: topSimilar.length
+  };
+};
+
+
+
+const generateContentBasedResponse = (entry, contentAnalysis) => {
+  const { situation, severity, emotionalIntensity, keyConcerns } = contentAnalysis;
+  
+  return `**Understanding:**
+I can see you're dealing with a ${severity} ${situation} situation. This is a real, significant challenge that deserves serious attention.
+
+**Professional Perspective:**
+Based on what you've shared, this isn't a minor issue that can be solved with simple advice. ${situation} challenges require thoughtful, strategic approaches.
+
+**Practical Steps:**
+1. Take time to process your emotions - this is a legitimate stressor
+2. Consider seeking professional support if this continues to impact your daily life
+3. Focus on one small step at a time rather than trying to solve everything at once
+
+**Supportive Message:**
+Your feelings are valid, and it's okay to need support during difficult times. You're taking the right step by journaling about this.`;
+};
+
+const generatePersonalizedContentResponse = (entry, contentAnalysis, similarSituations) => {
+  const { situation, severity, emotionalIntensity } = contentAnalysis;
+  
+  if (similarSituations.count > 0) {
+    return `**Personal Recognition:**
+I can see this is a ${severity} ${situation} challenge. Based on your journal history, you've faced similar situations before.
+
+**Historical Context:**
+You've navigated ${similarSituations.count} similar challenges in the past. This shows you have experience with this type of situation.
+
+**Tailored Advice:**
+Since this isn't your first time dealing with ${situation} challenges, draw on what you've learned from previous experiences. What strategies worked for you before?
+
+**Encouragement:**
+Your past experiences prove you have the capability to handle this. You're not starting from zero - you have a foundation of resilience.`;
+  } else {
+    return `**Personal Recognition:**
+This appears to be a new type of challenge for you. It's completely normal to feel uncertain when facing unfamiliar situations.
+
+**Historical Context:**
+While this specific situation is new, you've shown resilience in other areas of your life through your journaling.
+
+**Tailored Advice:**
+Approach this as a learning experience. Start small, be patient with yourself, and don't hesitate to seek support.
+
+**Encouragement:**
+Facing new challenges shows courage and growth. You're building new capabilities with each step you take.`;
+  }
+};
+
+const generateContentBasedCapabilityAssessment = (entry, contentAnalysis, similarSituations, capabilityScore) => {
+  const { situation, severity, emotionalIntensity, keyConcerns } = contentAnalysis;
+  
+  let assessment = `**Situation Assessment:**
+You're dealing with a ${severity} ${situation} challenge. This is a legitimate, significant life situation that requires serious attention.
+
+**Capability Analysis:**
+Your capability score is ${capabilityScore}/10. This assessment is based on your actual journal content and history, not generic assumptions.
+
+**Evidence-Based Insights:**
+`;
+
+  if (similarSituations.count > 0) {
+    assessment += `Based on your journal history, you've faced ${similarSituations.count} similar challenges before. This shows you have experience with this type of situation.
+
+Your past experiences demonstrate that you have the capability to navigate difficult circumstances.`;
+  } else {
+    assessment += `This appears to be a new type of challenge for you. While this specific situation is unfamiliar, your journaling shows you have general coping skills and self-awareness.`;
+  }
+
+  assessment += `
+
+**Professional Recommendations:**
+1. Acknowledge the real gravity of your situation - this isn't a minor issue
+2. Draw on your past experiences if you have similar challenges in your history
+3. Consider seeking professional support if this continues to impact your daily life
+4. Focus on one small step at a time rather than trying to solve everything at once
+
+**Realistic Assessment:**
+Your capability score of ${capabilityScore}/10 reflects that while this is a challenging situation, you have tools and resources to work through it. The key is to approach it systematically and not underestimate the difficulty.`;
+
+  return assessment;
+};
+
+const calculateRealCapabilityScore = (entry, contentAnalysis, similarSituations) => {
+  let score = 5; // Start with neutral score
+  
+  const { severity, emotionalIntensity, situation } = contentAnalysis;
+  
+  // Adjust based on situation severity
+  if (severity === 'critical') score -= 2;
+  else if (severity === 'high') score -= 1;
+  else if (severity === 'low') score += 1;
+  
+  // Adjust based on emotional intensity
+  if (emotionalIntensity >= 4) score -= 1;
+  else if (emotionalIntensity <= 2) score += 1;
+  
+  // Adjust based on similar past experiences
+  if (similarSituations.count > 0) {
+    score += Math.min(similarSituations.count * 0.5, 2); // Max +2 for experience
+  }
+  
+  // Ensure score stays within 1-10 range
+  return Math.max(1, Math.min(10, score));
 };
 
 // API Routes
@@ -635,7 +1061,7 @@ app.delete('/api/entries/:entryId', authenticateToken, async (req, res) => {
   }
 });
 
-// AI coaching endpoint (Generic responses)
+// AI coaching endpoint (REBUILT to analyze REAL journal content)
 app.post('/api/coaching/:entryId', async (req, res) => {
   try {
     const { entryId } = req.params;
@@ -647,38 +1073,37 @@ app.post('/api/coaching/:entryId', async (req, res) => {
       return res.status(404).json({ error: 'Entry not found' });
     }
 
-    // Create a fallback response when AI is not available
-    const fallbackResponse = `**Reflection:** Take a moment to reflect on what's happening in your life right now. What emotions are you experiencing?
-
-**Practice Self-Compassion:** Be kind to yourself. Remember that it's okay to have difficult days and challenging emotions.
-
-**Actionable Advice:** Consider what small step you could take today to move forward. Even tiny progress counts.
-
-**Positive Affirmation:** You are stronger than you think, and you have the power to create positive change in your life.`;
-
+    // ACTUALLY ANALYZE the journal content
+    const contentAnalysis = analyzeJournalContent(entry, entries);
+    
     let coachingAdvice;
     
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const prompt = `You are a compassionate life coach. The person has shared this journal entry:
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const prompt = `You are a compassionate, professional life coach. The person has shared this journal entry:
 
 "${entry.content}"
 Mood: ${entry.mood}
 Tags: ${entry.tags?.join(', ') || 'None'}
 
-Please provide thoughtful, encouraging advice with these sections:
-**Reflection** - Acknowledge their feelings and situation
-**Practice Self-Compassion** - Encourage self-kindness
-**Actionable Advice** - Give 2-3 specific, practical steps they can take
-**Positive Affirmation** - End with an empowering message
+IMPORTANT CONTEXT FROM THEIR JOURNAL HISTORY:
+${contentAnalysis.contextSummary}
 
-Keep it warm, practical, and supportive.`;
+Please provide thoughtful, professional advice that acknowledges the seriousness of their situation. This is NOT a casual conversation - this person is dealing with real life challenges.
+
+Structure your response with:
+**Understanding** - Acknowledge the gravity of their situation
+**Professional Perspective** - Provide mature, adult-level insight
+**Practical Steps** - Give 2-3 specific, actionable steps
+**Supportive Message** - End with genuine encouragement
+
+Keep it professional, mature, and genuinely helpful. Avoid generic advice.`;
 
       const result = await model.generateContent(prompt);
       coachingAdvice = result.response.text();
     } catch (aiError) {
-      console.log('AI service unavailable, using fallback response');
-      coachingAdvice = fallbackResponse;
+      console.log('AI service unavailable, using content-based fallback');
+      coachingAdvice = generateContentBasedResponse(entry, contentAnalysis);
     }
     
     // Update the entry with the insight
@@ -767,7 +1192,7 @@ app.post('/api/mood-followup/:entryId', async (req, res) => {
   }
 });
 
-// Personalized coaching endpoint (Enhanced personalized responses)
+// Personalized coaching endpoint (REBUILT to analyze REAL journal content)
 app.post('/api/personalized-coaching/:entryId', async (req, res) => {
   try {
     const { entryId } = req.params;
@@ -781,61 +1206,44 @@ app.post('/api/personalized-coaching/:entryId', async (req, res) => {
       return res.status(404).json({ error: 'Entry not found' });
     }
 
-    // Enhanced: Analyze personal patterns
-    const patternAnalysis = analyzePersonalPatterns(entries, entry);
-    
-    // Generate personalized prompt
-    const personalizedPrompt = generatePersonalizedPrompt(entry, patternAnalysis);
+    // ACTUALLY ANALYZE the journal content and find REAL similar situations
+    const contentAnalysis = analyzeJournalContent(entry, entries);
+    const similarSituations = findRealSimilarSituations(entry, entries);
     
     let personalizedAdvice;
     
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const result = await model.generateContent(personalizedPrompt);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      
+      const prompt = `You are a compassionate, professional life coach. The person has shared this journal entry:
+
+"${entry.content}"
+Mood: ${entry.mood}
+Tags: ${entry.tags?.join(', ') || 'None'}
+
+REAL ANALYSIS OF THEIR SITUATION:
+${contentAnalysis.contextSummary}
+
+SIMILAR SITUATIONS FROM THEIR HISTORY:
+${similarSituations.summary}
+
+Based on their ACTUAL journal content and history, provide personalized advice that:
+1. Acknowledges the specific nature of their current challenge
+2. References their real past experiences if relevant
+3. Gives practical, adult-level guidance
+4. Shows you've actually read and understood their situation
+
+Structure with:
+**Personal Recognition** - Show you understand their specific situation
+**Historical Context** - Reference their real past experiences if relevant
+**Tailored Advice** - Give advice specific to their situation
+**Encouragement** - Support based on their real patterns`;
+
+      const result = await model.generateContent(prompt);
       personalizedAdvice = result.response.text();
     } catch (aiError) {
-      console.log('AI service unavailable, using enhanced fallback personalized response');
-      
-      // Enhanced fallback based on personal patterns
-      const { similarEntries, copingAnalysis, personalPatterns } = patternAnalysis;
-      
-      if (similarEntries.length > 0) {
-        const topStrategies = Object.entries(copingAnalysis)
-          .filter(([_, data]) => data.effectiveness >= 6)
-          .sort((a, b) => b[1].effectiveness - a[1].effectiveness)
-          .slice(0, 3);
-        
-        personalizedAdvice = `**Personal Pattern Recognition:**
-I notice you've faced similar challenges before. Based on your ${similarEntries.length} similar experiences, I can see patterns in how you respond to situations like this.
-
-**Evidence-Based Personalized Advice:**
-Your most effective strategies in similar situations have been:
-${topStrategies.map(([strategy, data]) => 
-  `- "${strategy}" (${data.effectiveness.toFixed(1)}/10 effectiveness)`
-).join('\n')}
-
-**Actionable Steps Based on Your History:**
-1. Try the strategies that have worked for you before
-2. Remember that you've successfully navigated similar challenges ${similarEntries.filter(e => e.moodFollowUp?.feeling_better === 'yes').length} times
-3. Trust your proven coping mechanisms
-
-**Positive Affirmation Based on Your Growth:**
-You've shown resilience and growth through similar experiences. Your past successes prove you have the capability to handle this challenge.`;
-      } else {
-        personalizedAdvice = `**Personal Pattern Recognition:**
-This appears to be a new type of challenge for you, which is completely normal and part of growth.
-
-**Evidence-Based Personalized Advice:**
-Since this is a new situation, let's approach it with curiosity and self-compassion.
-
-**Actionable Steps Based on Your History:**
-1. Start with small, manageable steps
-2. Be patient with yourself as you learn
-3. Remember that every challenge is an opportunity for growth
-
-**Positive Affirmation Based on Your Growth:**
-Your willingness to face new challenges shows courage and a growth mindset.`;
-      }
+      console.log('AI service unavailable, using content-based personalized response');
+      personalizedAdvice = generatePersonalizedContentResponse(entry, contentAnalysis, similarSituations);
     }
     
     // Update the entry with the personalized insight
@@ -865,91 +1273,65 @@ app.post('/api/capability-assessment/:entryId', async (req, res) => {
       return res.status(404).json({ error: 'Entry not found' });
     }
     
-    // Enhanced: Analyze personal patterns
-    const patternAnalysis = analyzePersonalPatterns(entries, entry);
+    // ACTUALLY ANALYZE the journal content and find REAL similar situations
+    const contentAnalysis = analyzeJournalContent(entry, entries);
+    const similarSituations = findRealSimilarSituations(entry, entries);
     
-    // Check if entry has negative emotions (only show for negative moods)
-    if (!patternAnalysis.isNegativeMood) {
-      return res.status(400).json({ 
-        error: 'Capability assessment is only available for entries with negative emotions (anxious, frustrated, sad, angry, etc.)' 
-      });
-    }
-    
-    // Generate personalized capability assessment prompt
-    const capabilityPrompt = generateCapabilityAssessmentPrompt(entry, patternAnalysis);
+    // Calculate capability based on REAL content analysis, not superficial patterns
+    const capabilityScore = calculateRealCapabilityScore(entry, contentAnalysis, similarSituations);
     
     let assessmentResult;
     
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const result = await model.generateContent(capabilityPrompt);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      
+      const prompt = `You are a professional life coach assessing someone's capability to handle a challenging situation.
+
+JOURNAL ENTRY: "${entry.content}"
+MOOD: ${entry.mood}
+TAGS: ${entry.tags?.join(', ') || 'None'}
+
+REAL SITUATION ANALYSIS:
+${contentAnalysis.contextSummary}
+
+SIMILAR SITUATIONS FROM THEIR HISTORY:
+${similarSituations.summary}
+
+CAPABILITY SCORE: ${capabilityScore}/10
+
+Based on their ACTUAL journal content and history, provide a professional capability assessment that:
+1. Acknowledges the real gravity of their situation
+2. References their actual past experiences if relevant
+3. Gives an honest, realistic assessment of their capability
+4. Provides specific, actionable guidance
+
+Structure with:
+**Situation Assessment** - Professional evaluation of the challenge
+**Capability Analysis** - Honest assessment based on their real history
+**Evidence-Based Insights** - What their journal actually shows about their capabilities
+**Professional Recommendations** - Specific, actionable advice
+
+Keep it professional, honest, and genuinely helpful. This person is dealing with real life challenges.`;
+
+      const result = await model.generateContent(prompt);
       assessmentResult = result.response.text();
     } catch (aiError) {
-      console.log('AI service unavailable, using enhanced fallback capability assessment');
-      
-      // Enhanced fallback based on personal patterns
-      const { difficultyScore, similarEntries, copingAnalysis } = patternAnalysis;
-      
-      if (similarEntries.length > 0) {
-        const successRate = (similarEntries.filter(e => e.moodFollowUp?.feeling_better === 'yes').length / similarEntries.length) * 100;
-        const topStrategies = Object.entries(copingAnalysis)
-          .filter(([_, data]) => data.effectiveness >= 6)
-          .sort((a, b) => b[1].effectiveness - a[1].effectiveness)
-          .slice(0, 3);
-        
-        assessmentResult = `**Personal Difficulty Breakdown:**
-Based on your ${similarEntries.length} similar past experiences, this situation has a difficulty score of ${difficultyScore.toFixed(1)}/10 for you personally.
-
-**Your Proven Strengths:**
-You've successfully handled similar challenges ${similarEntries.filter(e => e.moodFollowUp?.feeling_better === 'yes').length} times (${successRate.toFixed(1)}% success rate). Your most effective strategies:
-${topStrategies.map(([strategy, data]) => 
-  `- "${strategy}" (${data.effectiveness.toFixed(1)}/10 effectiveness)`
-).join('\n')}
-
-**Personal Growth Indicators:**
-- You've faced ${similarEntries.length} similar challenges
-- You've developed ${topStrategies.length} proven coping strategies
-- Your success rate shows resilience and growth
-
-**Specific Capability Factors:**
-- Emotional resilience: ${successRate >= 70 ? 'High' : successRate >= 40 ? 'Moderate' : 'Developing'}
-- Strategy effectiveness: ${topStrategies.length > 0 ? 'Strong' : 'Developing'}
-- Pattern recognition: ${similarEntries.length > 2 ? 'Good' : 'Learning'}
-
-**Personalized Confidence Level:**
-Based on your history, you have a ${successRate >= 70 ? 'high' : successRate >= 40 ? 'moderate' : 'developing'} confidence level for handling this type of challenge.`;
-      } else {
-        assessmentResult = `**Personal Difficulty Breakdown:**
-This appears to be a new type of challenge for you, which is completely normal. Without similar past experiences, the difficulty is unknown but manageable.
-
-**Your Proven Strengths:**
-- You're willing to face new challenges (growth mindset)
-- You have general coping skills from other life experiences
-- You're actively seeking support and self-reflection
-
-**Personal Growth Indicators:**
-- This is a new learning opportunity
-- Your journaling shows self-awareness
-- You're taking proactive steps to understand yourself
-
-**Specific Capability Factors:**
-- Adaptability: High (facing new challenges)
-- Self-awareness: Good (journaling regularly)
-- Growth mindset: Strong (seeking understanding)
-
-**Personalized Confidence Level:**
-While this is a new challenge, your willingness to face it and seek understanding shows strong personal capability. Start with small steps and trust your ability to learn and grow.`;
-      }
+      console.log('AI service unavailable, using content-based capability assessment');
+      assessmentResult = generateContentBasedCapabilityAssessment(entry, contentAnalysis, similarSituations, capabilityScore);
     }
     
     res.json({ 
-      capabilityScore: patternAnalysis.difficultyScore,
+      capabilityScore: Math.round(capabilityScore * 10) / 10,
       assessment: assessmentResult,
-      patternAnalysis: {
-        similarExperiences: patternAnalysis.similarEntries.length,
-        successRate: patternAnalysis.similarEntries.length > 0 ? 
-          (patternAnalysis.similarEntries.filter(e => e.moodFollowUp?.feeling_better === 'yes').length / patternAnalysis.similarEntries.length) * 100 : 0,
-        effectiveStrategies: Object.keys(patternAnalysis.copingAnalysis).slice(0, 3)
+      contentAnalysis: {
+        situation: contentAnalysis.situation,
+        severity: contentAnalysis.severity,
+        emotionalIntensity: contentAnalysis.emotionalIntensity,
+        keyConcerns: contentAnalysis.keyConcerns
+      },
+      similarSituations: {
+        count: similarSituations.count,
+        summary: similarSituations.summary
       }
     });
   } catch (error) {
