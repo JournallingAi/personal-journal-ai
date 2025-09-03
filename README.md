@@ -1,228 +1,226 @@
-# Sans Journal - AI-Powered Personal Journaling App
+# AI-Powered Personal Journaling App
 
-A beautiful, modern journaling application that combines personal reflection with AI-powered life coaching advice. Built with React, Node.js, and Google Gemini AI.
+A comprehensive AI-powered personal journaling application with life coaching advice, built with React, Node.js, and AI integration.
 
-## ✨ Features
+## 🚀 Features
 
-- **Personal Journaling**: Write daily entries with mood tracking and tags
-- **AI Life Coaching**: Get personalized advice and insights for each entry
-- **Mood Analytics**: Track your emotional patterns over time
-- **Beautiful UI**: Modern, responsive design with Material-UI
-- **Insights Dashboard**: Review all your AI coaching advice in one place
-- **Analytics**: View statistics about your journaling habits
+- **AI-Powered Insights**: Get personalized coaching advice based on your journal entries
+- **Mood Tracking**: Track your emotional well-being over time
+- **Secure Authentication**: Phone number/OTP and Google OAuth support
+- **Profile Management**: Comprehensive user profile system
+- **Responsive Design**: Beautiful Material-UI interface
+- **Real-time Updates**: Instant feedback and insights
 
-## 🚀 Quick Start
+## 🛠️ Tech Stack
+
+- **Frontend**: React 19, Material-UI, Emotion
+- **Backend**: Node.js, Express.js
+- **AI Integration**: Google Gemini AI, OpenAI
+- **Authentication**: JWT, Google OAuth
+- **Database**: JSON file-based storage
+- **Deployment**: GitHub Actions, Vercel, Railway
+
+## 📦 Installation
 
 ### Prerequisites
-
-- Node.js (version 14 or higher)
+- Node.js 18+
 - npm or yarn
-- Google Gemini API key (free)
+- Google Gemini AI API key
+- OpenAI API key (optional)
 
-### Installation
+### Local Development
 
-1. **Clone or download this project**
+1. **Clone the repository**
    ```bash
-   cd sans-journal
+   git clone https://github.com/JournallingAi/personal-journal-ai.git
+   cd personal-journal-ai
    ```
 
-2. **Install backend dependencies**
+2. **Install dependencies**
    ```bash
    npm install
-   ```
-
-3. **Install frontend dependencies**
-   ```bash
-   cd client
-   npm install
+   cd client && npm install
    cd ..
    ```
 
-4. **Set up environment variables**
-   - Copy `env.example` to `.env`
-   - Add your Gemini API key:
+3. **Environment setup**
    ```bash
    cp env.example .env
-   ```
-   - Edit `.env` and add your Gemini API key:
-   ```
-   GEMINI_API_KEY=your_actual_gemini_api_key_here
+   # Edit .env with your API keys
    ```
 
-5. **Get a Google Gemini API Key (FREE)**
-   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Sign in with your Google account
-   - Create a new API key (completely free!)
-   - Add it to your `.env` file
-
-### Running the Application
-
-1. **Start the backend server**
+4. **Start development servers**
    ```bash
+   # Terminal 1: Backend
    npm run dev
-   ```
-   The server will run on `http://localhost:5000`
-
-2. **Start the React frontend** (in a new terminal)
-   ```bash
+   
+   # Terminal 2: Frontend
    npm run client
    ```
-   The app will open in your browser at `http://localhost:3000`
-
-## 📱 How to Use
-
-### Writing Journal Entries
-1. Navigate to the **Journal** tab
-2. Write your thoughts in the text area
-3. Select your current mood from the dropdown
-4. Add relevant tags (optional)
-5. Click "Save Entry"
-
-### Getting AI Coaching
-1. After saving an entry, click "Get AI Coaching"
-2. The AI will analyze your entry and provide:
-   - Personal reflection
-   - Actionable advice
-   - Positive affirmations
-   - Self-reflection questions
-
-### Viewing Insights
-- Go to the **Insights** tab to see all your AI coaching advice
-- Review patterns and growth over time
-
-### Analytics
-- Visit the **Analytics** tab to see:
-  - Total entries and insights
-  - Mood distribution
-  - Recent activity
-  - Journaling patterns
-
-## 🛠️ Technology Stack
-
-- **Frontend**: React 18, Material-UI, React Router
-- **Backend**: Node.js, Express.js
-- **AI**: OpenAI GPT-3.5-turbo
-- **Data Storage**: JSON file (simple, beginner-friendly)
-- **Styling**: Material-UI with custom theme
-
-## 📁 Project Structure
-
-```
-sans-journal/
-├── server.js              # Express server
-├── package.json           # Backend dependencies
-├── env.example           # Environment variables template
-├── journal_data.json     # Data storage (created automatically)
-├── client/               # React frontend
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Header.js
-│   │   │   ├── Journal.js
-│   │   │   ├── Insights.js
-│   │   │   └── Analytics.js
-│   │   └── App.js
-│   └── package.json
-└── README.md
-```
-
-## 🔧 API Endpoints
-
-- `GET /api/entries` - Get all journal entries
-- `POST /api/entries` - Create a new entry
-- `POST /api/coaching/:entryId` - Get AI coaching for an entry
-- `GET /api/analytics/mood` - Get mood analytics
-- `GET /api/insights` - Get entries with AI insights
-
-## 🎨 Customization
-
-### Changing Colors
-Edit the theme in `client/src/App.js`:
-```javascript
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#6B73FF', // Change this color
-    },
-    secondary: {
-      main: '#FF6B9D', // Change this color
-    },
-  },
-});
-```
-
-### Adding New Moods
-Edit the moods array in `client/src/components/Journal.js`:
-```javascript
-const moods = [
-  '😊 Happy', '😔 Sad', '😤 Angry', '😰 Anxious', 
-  '😴 Tired', '🤔 Contemplative', '😌 Peaceful', '😤 Frustrated',
-  '😎 Confident', '🥰 Grateful' // Add new moods here
-];
-```
 
 ## 🚀 Deployment
 
-### Heroku Deployment
-1. Create a Heroku account
-2. Install Heroku CLI
-3. Run these commands:
+### GitHub Actions Setup
+
+This project uses GitHub Actions for automated deployment to Vercel (frontend) and Railway (backend).
+
+#### 1. Frontend Deployment (Vercel)
+
+1. **Create Vercel Account**
+   - Go to [vercel.com](https://vercel.com)
+   - Sign up with GitHub
+   - Create a new project
+
+2. **Get Vercel Credentials**
+   - Go to Vercel Dashboard → Settings → Tokens
+   - Create a new token
+   - Copy your Organization ID and Project ID
+
+3. **Add GitHub Secrets**
+   - Go to your GitHub repository → Settings → Secrets and variables → Actions
+   - Add the following secrets:
+     - `VERCEL_TOKEN`: Your Vercel token
+     - `VERCEL_ORG_ID`: Your Vercel organization ID
+     - `VERCEL_PROJECT_ID`: Your Vercel project ID
+
+#### 2. Backend Deployment (Railway)
+
+1. **Create Railway Account**
+   - Go to [railway.app](https://railway.app)
+   - Sign up with GitHub
+   - Create a new project
+
+2. **Get Railway Token**
+   - Go to Railway Dashboard → Account → Tokens
+   - Create a new token
+
+3. **Add GitHub Secrets**
+   - Add to your GitHub repository secrets:
+     - `RAILWAY_TOKEN`: Your Railway token
+     - `RAILWAY_SERVICE`: Your Railway service name
+
+#### 3. Environment Variables
+
+**Frontend (Vercel)**
+- `REACT_APP_API_URL`: Your Railway backend URL
+- `REACT_APP_GOOGLE_CLIENT_ID`: Google OAuth client ID
+- `REACT_APP_GOOGLE_CLIENT_SECRET`: Google OAuth client secret
+
+**Backend (Railway)**
+- `GEMINI_API_KEY`: Your Google Gemini AI API key
+- `OPENAI_API_KEY`: Your OpenAI API key (optional)
+- `JWT_SECRET`: JWT signing secret
+- `SESSION_SECRET`: Session encryption secret
+
+### Manual Deployment
+
+#### Option 1: Vercel + Railway (Recommended)
+
+1. **Deploy Backend to Railway**
    ```bash
-   heroku create your-app-name
-   git add .
-   git commit -m "Initial commit"
+   # Install Railway CLI
+   npm install -g @railway/cli
+   
+   # Login and deploy
+   railway login
+   railway up
+   ```
+
+2. **Deploy Frontend to Vercel**
+   ```bash
+   # Install Vercel CLI
+   npm install -g vercel
+   
+   # Deploy from client directory
+   cd client
+   vercel --prod
+   ```
+
+#### Option 2: Heroku
+
+1. **Create Heroku app**
+   ```bash
+   heroku create your-journal-app
+   ```
+
+2. **Deploy**
+   ```bash
    git push heroku main
    ```
-4. Set environment variables in Heroku dashboard
 
-### Local Production Build
-```bash
-cd client
-npm run build
-cd ..
-npm start
+#### Option 3: DigitalOcean App Platform
+
+1. **Create app in DigitalOcean dashboard**
+2. **Connect GitHub repository**
+3. **Configure build settings**
+4. **Deploy automatically**
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+# AI Services
+GEMINI_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
+
+# Authentication
+JWT_SECRET=your_jwt_secret_key
+SESSION_SECRET=your_session_secret
+
+# Server
+PORT=5001
+NODE_ENV=development
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
 ```
+
+### API Endpoints
+
+- `POST /api/entries` - Create journal entry
+- `GET /api/entries` - Get user's journal entries
+- `POST /api/mood-followup/:entryId` - Submit mood follow-up
+- `POST /api/ai-coaching` - Get AI coaching advice
+- `POST /api/auth/phone` - Phone authentication
+- `POST /api/auth/verify-otp` - OTP verification
+- `GET /api/profile` - Get user profile
+- `PUT /api/profile` - Update user profile
+
+## 📱 Usage
+
+1. **Sign up/Login** using phone number or Google account
+2. **Write journal entries** about your day, thoughts, or feelings
+3. **Get AI insights** and personalized coaching advice
+4. **Track your mood** and emotional patterns
+5. **Manage your profile** and preferences
 
 ## 🤝 Contributing
 
-This is a learning project! Feel free to:
-- Add new features
-- Improve the UI/UX
-- Fix bugs
-- Add more AI coaching capabilities
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📝 License
+## 📄 License
 
-MIT License - feel free to use this project for learning and personal use.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Troubleshooting
+## 🙏 Acknowledgments
 
-### Common Issues
+- Google Gemini AI for intelligent insights
+- Material-UI for beautiful components
+- React community for excellent tooling
+- OpenAI for additional AI capabilities
 
-1. **"Failed to get coaching advice"**
-   - Check your OpenAI API key in `.env`
-   - Ensure you have credits in your OpenAI account
+## 📞 Support
 
-2. **"Failed to fetch entries"**
-   - Make sure the backend server is running
-   - Check that the server is on port 5000
+For support, email support@yourjournal.com or create an issue in this repository.
 
-3. **Frontend not connecting to backend**
-   - Verify both servers are running
-   - Check that the API_BASE_URL in components matches your backend URL
+---
 
-### Getting Help
-- Check the browser console for errors
-- Verify all dependencies are installed
-- Ensure your OpenAI API key is valid
-
-## 🎯 Next Steps
-
-Once you're comfortable with this app, consider adding:
-- User authentication
-- Database integration (MongoDB, PostgreSQL)
-- More advanced AI features
-- Export functionality
-- Mobile app version
-- Social features
-
-Happy journaling! 📖✨ 
+**Made with ❤️ for better mental health and personal growth** 
