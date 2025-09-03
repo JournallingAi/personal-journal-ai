@@ -45,7 +45,6 @@ jobs:
   # Backend deployment to Railway
   deploy-backend:
     runs-on: ubuntu-latest
-    if: ${{ secrets.RAILWAY_TOKEN != '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,9 +61,10 @@ jobs:
       - name: Deploy to Railway
         run: |
           if [ -n "${{ secrets.RAILWAY_SERVICE }}" ]; then
+            echo "Using service: ${{ secrets.RAILWAY_SERVICE }}"
             railway up --service ${{ secrets.RAILWAY_SERVICE }}
           else
-            echo "No Railway service specified, deploying to default service"
+            echo "No service specified, using default"
             railway up
           fi
         env:
