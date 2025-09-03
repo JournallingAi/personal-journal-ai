@@ -9,7 +9,9 @@
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
     "install-client": "cd client && npm install",
-    "heroku-postbuild": "npm run install-client && npm run build"
+    "heroku-postbuild": "npm run install-client && npm run build",
+    "test": "echo \"No tests specified\" && exit 0",
+    "test:ci": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

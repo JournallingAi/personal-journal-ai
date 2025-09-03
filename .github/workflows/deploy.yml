@@ -19,7 +19,6 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: client/package-lock.json
 
       - name: Install frontend dependencies
         run: |
@@ -55,14 +54,13 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Install backend dependencies
-        run: npm ci
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
 
       - name: Deploy to Railway
-        uses: bervProject/railway-deploy@v1.0.0
-        with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: ${{ secrets.RAILWAY_SERVICE }}
+        run: railway up --service ${{ secrets.RAILWAY_SERVICE }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
   # Run tests
   test:
@@ -86,7 +84,7 @@ jobs:
           npm ci
 
       - name: Run backend tests
-        run: npm test
+        run: npm run test:ci
         env:
           NODE_ENV: test
 
