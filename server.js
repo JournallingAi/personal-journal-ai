@@ -35,7 +35,18 @@ app.get('/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not Set'
+  });
+});
+
+// Test endpoint for debugging
+app.get('/api/test', (req, res) => {
+  res.json({
+    message: 'Test endpoint working',
+    timestamp: new Date().toISOString(),
+    databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not Set',
+    nodeEnv: process.env.NODE_ENV || 'development'
   });
 });
 
