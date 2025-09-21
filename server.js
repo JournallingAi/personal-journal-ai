@@ -94,8 +94,9 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Store OTPs in database for production
+// Store OTPs in database for production (with in-memory fallback)
 const { pool } = require('./database');
+const otpStore = new Map(); // Fallback for when database is not available
 
 // JWT middleware
 const authenticateToken = (req, res, next) => {
@@ -756,12 +757,19 @@ app.post('/api/auth/send-otp', async (req, res) => {
     const normalized = normalizePhoneNumber(phoneNumber);
     const otp = generateOTP();
     
-    // Store OTP in database
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
-    await pool.query(
-      'INSERT INTO otps (phone_number, otp, expires_at) VALUES ($1, $2, $3) ON CONFLICT (phone_number) DO UPDATE SET otp = $2, expires_at = $3',
-      [normalized, otp, expiresAt]
-    );
+    // For now, use in-memory storage until database is fully working
+    // Store OTP in database (with fallback to in-memory)
+    try {
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+      await pool.query(
+        'INSERT INTO otps (phone_number, otp, expires_at) VALUES ($1, $2, $3) ON CONFLICT (phone_number) DO UPDATE SET otp = $2, expires_at = $3',
+        [normalized, otp, expiresAt]
+      );
+    } catch (dbError) {
+      console.log('Database not available, using in-memory storage:', dbError.message);
+      // Fallback to in-memory storage
+      otpStore.set(normalized, { otp, timestamp: Date.now() });
+    }
 
     // For demo purposes, return the OTP in the response
     // In production, integrate with SMS service like Twilio
@@ -786,25 +794,46 @@ app.post('/api/auth/verify-otp', async (req, res) => {
 
     const normalized = normalizePhoneNumber(phoneNumber);
     
-    // Get OTP from database
-    const result = await pool.query(
-      'SELECT otp, expires_at FROM otps WHERE phone_number = $1',
-      [normalized]
-    );
+    // Try database first, fallback to in-memory
+    let storedOTP = null;
+    let useDatabase = true;
     
-    if (result.rows.length === 0) {
+    try {
+      const result = await pool.query(
+        'SELECT otp, expires_at FROM otps WHERE phone_number = $1',
+        [normalized]
+      );
+      
+      if (result.rows.length > 0) {
+        storedOTP = result.rows[0];
+      }
+    } catch (dbError) {
+      console.log('Database not available, using in-memory storage:', dbError.message);
+      useDatabase = false;
+      storedOTP = otpStore.get(normalized);
+    }
+    
+    if (!storedOTP) {
       return res.status(400).json({ error: 'No OTP found for this number' });
     }
     
-    const storedOTP = result.rows[0];
-    if (storedOTP.otp !== otp) {
+    // Check OTP validity
+    const expectedOTP = useDatabase ? storedOTP.otp : storedOTP.otp;
+    if (expectedOTP !== otp) {
       return res.status(400).json({ error: 'Invalid OTP' });
     }
 
     // Check if OTP is expired
-    if (new Date() > new Date(storedOTP.expires_at)) {
-      await pool.query('DELETE FROM otps WHERE phone_number = $1', [normalized]);
-      return res.status(400).json({ error: 'OTP expired' });
+    if (useDatabase) {
+      if (new Date() > new Date(storedOTP.expires_at)) {
+        await pool.query('DELETE FROM otps WHERE phone_number = $1', [normalized]);
+        return res.status(400).json({ error: 'OTP expired' });
+      }
+    } else {
+      if (Date.now() - storedOTP.timestamp > 5 * 60 * 1000) {
+        otpStore.delete(normalized);
+        return res.status(400).json({ error: 'OTP expired' });
+      }
     }
 
     // Get or create user (by normalized phone)
@@ -848,8 +877,16 @@ app.post('/api/auth/verify-otp', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Delete OTP from database after successful verification
-    await pool.query('DELETE FROM otps WHERE phone_number = $1', [normalized]);
+    // Delete OTP after successful verification
+    if (useDatabase) {
+      try {
+        await pool.query('DELETE FROM otps WHERE phone_number = $1', [normalized]);
+      } catch (dbError) {
+        console.log('Could not delete OTP from database:', dbError.message);
+      }
+    } else {
+      otpStore.delete(normalized);
+    }
 
     res.json({
       success: true,
