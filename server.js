@@ -16,7 +16,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-app.vercel.app', 'https://personal-journal-ai.vercel.app'] 
+    ? ['https://personal-journal-ai-frontend.vercel.app', 'https://personal-journal-ai.vercel.app'] 
     : 'http://localhost:3000',
   credentials: true
 }));
@@ -1391,6 +1391,17 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`CORS origins: ${process.env.NODE_ENV === 'production' ? 'production origins' : 'localhost:3000'}`);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
 }); 
