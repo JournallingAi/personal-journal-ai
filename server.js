@@ -939,8 +939,24 @@ app.post('/api/auth/logout', (req, res) => {
 // Profile management endpoints
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
-    const usersData = await readUsers();
-    const user = usersData.users.find(u => u.id === req.user.userId);
+    // Try database first, fallback to JSON file
+    let user = null;
+    
+    try {
+      const result = await pool.query(
+        'SELECT * FROM users WHERE id = $1',
+        [req.user.userId]
+      );
+      
+      if (result.rows.length > 0) {
+        user = result.rows[0];
+      }
+    } catch (dbError) {
+      console.log('Database not available, using JSON file:', dbError.message);
+      // Fallback to JSON file
+      const usersData = await readUsers();
+      user = usersData.users.find(u => u.id === req.user.userId);
+    }
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -948,18 +964,19 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
     
     res.json({
       id: user.id,
-      phoneNumber: user.phoneNumber,
+      phoneNumber: user.phone_number || user.phoneNumber,
       email: user.email,
       name: user.name,
       picture: user.picture,
-      dateOfBirth: user.dateOfBirth,
+      dateOfBirth: user.date_of_birth || user.dateOfBirth,
       location: user.location,
       occupation: user.occupation,
       education: user.education,
       bio: user.bio,
-      createdAt: user.createdAt
+      createdAt: user.created_at || user.createdAt
     });
   } catch (error) {
+    console.error('Error fetching profile:', error);
     res.status(500).json({ error: 'Failed to get profile' });
   }
 });
@@ -968,42 +985,76 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
     const { name, email, phone, dateOfBirth, location, occupation, education, bio } = req.body;
     
-    const usersData = await readUsers();
-    const userIndex = usersData.users.findIndex(u => u.id === req.user.userId);
+    // Try database first, fallback to JSON file
+    let updatedUser = null;
     
-    if (userIndex === -1) {
+    try {
+      // Update user in database
+      const result = await pool.query(
+        `UPDATE users SET 
+         name = COALESCE($1, name),
+         email = COALESCE($2, email),
+         phone_number = COALESCE($3, phone_number),
+         date_of_birth = COALESCE($4, date_of_birth),
+         location = COALESCE($5, location),
+         occupation = COALESCE($6, occupation),
+         education = COALESCE($7, education),
+         bio = COALESCE($8, bio),
+         updated_at = CURRENT_TIMESTAMP
+         WHERE id = $9
+         RETURNING *`,
+        [name, email, phone, dateOfBirth, location, occupation, education, bio, req.user.userId]
+      );
+      
+      if (result.rows.length > 0) {
+        updatedUser = result.rows[0];
+      }
+    } catch (dbError) {
+      console.log('Database not available, using JSON file:', dbError.message);
+      // Fallback to JSON file
+      const usersData = await readUsers();
+      const userIndex = usersData.users.findIndex(u => u.id === req.user.userId);
+      
+      if (userIndex === -1) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Update user profile in JSON
+      usersData.users[userIndex] = {
+        ...usersData.users[userIndex],
+        name: name || usersData.users[userIndex].name,
+        email: email || usersData.users[userIndex].email,
+        phone: phone || usersData.users[userIndex].phone,
+        dateOfBirth: dateOfBirth || usersData.users[userIndex].dateOfBirth,
+        location: location || usersData.users[userIndex].location,
+        occupation: occupation || usersData.users[userIndex].occupation,
+        education: education || usersData.users[userIndex].education,
+        bio: bio || usersData.users[userIndex].bio
+      };
+      
+      await writeUsers(usersData);
+      updatedUser = usersData.users[userIndex];
+    }
+    
+    if (!updatedUser) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Update user profile
-    usersData.users[userIndex] = {
-      ...usersData.users[userIndex],
-      name: name || usersData.users[userIndex].name,
-      email: email || usersData.users[userIndex].email,
-      phone: phone || usersData.users[userIndex].phone,
-      dateOfBirth: dateOfBirth || usersData.users[userIndex].dateOfBirth,
-      location: location || usersData.users[userIndex].location,
-      occupation: occupation || usersData.users[userIndex].occupation,
-      education: education || usersData.users[userIndex].education,
-      bio: bio || usersData.users[userIndex].bio
-    };
-    
-    await writeUsers(usersData);
-    
     res.json({
-      id: usersData.users[userIndex].id,
-      phoneNumber: usersData.users[userIndex].phoneNumber,
-      email: usersData.users[userIndex].email,
-      name: usersData.users[userIndex].name,
-      picture: usersData.users[userIndex].picture,
-      dateOfBirth: usersData.users[userIndex].dateOfBirth,
-      location: usersData.users[userIndex].location,
-      occupation: usersData.users[userIndex].occupation,
-      education: usersData.users[userIndex].education,
-      bio: usersData.users[userIndex].bio,
-      createdAt: usersData.users[userIndex].createdAt
+      id: updatedUser.id,
+      phoneNumber: updatedUser.phone_number || updatedUser.phoneNumber,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      picture: updatedUser.picture,
+      dateOfBirth: updatedUser.date_of_birth || updatedUser.dateOfBirth,
+      location: updatedUser.location,
+      occupation: updatedUser.occupation,
+      education: updatedUser.education,
+      bio: updatedUser.bio,
+      createdAt: updatedUser.created_at || updatedUser.createdAt
     });
   } catch (error) {
+    console.error('Error updating profile:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
 });
