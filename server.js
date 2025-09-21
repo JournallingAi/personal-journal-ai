@@ -1471,10 +1471,32 @@ app.get('/api/analytics/mood', async (req, res) => {
 // Get recent insights
 app.get('/api/insights', async (req, res) => {
   try {
-    const data = await readData();
-    const entriesWithInsights = data.entries.filter(entry => entry.aiInsight);
+    let entriesWithInsights = [];
+    
+    // Try database first, fallback to JSON file
+    try {
+      const result = await pool.query(
+        'SELECT * FROM entries WHERE ai_insight IS NOT NULL AND ai_insight != \'\' ORDER BY created_at DESC LIMIT 5'
+      );
+      entriesWithInsights = result.rows.map(row => ({
+        id: row.id,
+        content: row.content,
+        mood: row.mood,
+        tags: row.tags,
+        aiInsight: row.ai_insight,
+        timestamp: row.timestamp,
+        userId: row.user_id
+      }));
+    } catch (dbError) {
+      console.log('Database not available, using JSON file:', dbError.message);
+      // Fallback to JSON file
+      const data = await readData();
+      entriesWithInsights = data.entries.filter(entry => entry.aiInsight);
+    }
+    
     res.json(entriesWithInsights.slice(0, 5)); // Last 5 insights
   } catch (error) {
+    console.error('Error fetching insights:', error);
     res.status(500).json({ error: 'Failed to fetch insights' });
   }
 });
