@@ -905,6 +905,14 @@ app.post('/api/auth/verify-otp', async (req, res) => {
       user: {
         id: user.id,
         phoneNumber: user.phone_number || user.phoneNumber,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        dateOfBirth: user.date_of_birth || user.dateOfBirth,
+        location: user.location,
+        occupation: user.occupation,
+        education: user.education,
+        bio: user.bio,
         createdAt: user.created_at || user.createdAt
       }
     });
