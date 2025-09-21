@@ -46,8 +46,34 @@ app.get('/api/test', (req, res) => {
     message: 'Test endpoint working',
     timestamp: new Date().toISOString(),
     databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not Set',
-    nodeEnv: process.env.NODE_ENV || 'development'
+    nodeEnv: process.env.NODE_ENV || 'development',
+    jwtSecret: process.env.JWT_SECRET ? 'Set' : 'Not Set'
   });
+});
+
+// Debug endpoint to check token
+app.get('/api/debug/token', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.json({ error: 'No token provided' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    res.json({ 
+      success: true, 
+      decoded,
+      jwtSecret: process.env.JWT_SECRET ? 'Set' : 'Not Set'
+    });
+  } catch (error) {
+    res.json({ 
+      error: 'Token verification failed', 
+      message: error.message,
+      jwtSecret: process.env.JWT_SECRET ? 'Set' : 'Not Set'
+    });
+  }
 });
 
 // Serve static files only in production
