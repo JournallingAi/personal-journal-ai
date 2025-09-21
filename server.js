@@ -806,42 +806,66 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     }
 
     // Get or create user (by normalized phone)
-    const usersData = await readUsers();
-    let user = usersData.users.find(u => normalizePhoneNumber(u.phoneNumber) === normalized);
+    let user = null;
+    
+    // Try database first, fallback to JSON file
+    try {
+      const result = await pool.query(
+        'SELECT * FROM users WHERE phone_number = $1',
+        [normalized]
+      );
+      
+      if (result.rows.length > 0) {
+        user = result.rows[0];
+      } else {
+        // Create user in database
+        const userId = Date.now().toString();
+        const createResult = await pool.query(
+          'INSERT INTO users (id, phone_number, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING *',
+          [userId, normalized]
+        );
+        user = createResult.rows[0];
+      }
+    } catch (dbError) {
+      console.log('Database not available, using JSON file:', dbError.message);
+      // Fallback to JSON file
+      const usersData = await readUsers();
+      user = usersData.users.find(u => normalizePhoneNumber(u.phoneNumber) === normalized);
 
-    if (!user) {
-      user = {
-        id: Date.now().toString(),
-        phoneNumber: normalized,
-        createdAt: new Date().toISOString(),
-        journalEntries: []
-      };
-      usersData.users.push(user);
-      await writeUsers(usersData);
-    } else {
-      // Merge duplicate users with the same normalized phone into this one and reassign entries
-      const duplicates = usersData.users.filter(u => normalizePhoneNumber(u.phoneNumber) === normalized && u.id !== user.id);
-      if (duplicates.length > 0) {
-        const data = await readData();
-        for (const dup of duplicates) {
-          // Reassign entries from duplicate userId to the primary user's id
-          for (const entry of data.entries) {
-            if (entry.userId === dup.id) {
-              entry.userId = user.id;
-            }
-          }
-          // Remove duplicate user from users list
-          const idx = usersData.users.findIndex(u => u.id === dup.id);
-          if (idx !== -1) usersData.users.splice(idx, 1);
-        }
-        await writeData(data);
+      if (!user) {
+        user = {
+          id: Date.now().toString(),
+          phoneNumber: normalized,
+          createdAt: new Date().toISOString(),
+          journalEntries: []
+        };
+        usersData.users.push(user);
         await writeUsers(usersData);
+      } else {
+        // Merge duplicate users with the same normalized phone into this one and reassign entries
+        const duplicates = usersData.users.filter(u => normalizePhoneNumber(u.phoneNumber) === normalized && u.id !== user.id);
+        if (duplicates.length > 0) {
+          const data = await readData();
+          for (const dup of duplicates) {
+            // Reassign entries from duplicate userId to the primary user's id
+            for (const entry of data.entries) {
+              if (entry.userId === dup.id) {
+                entry.userId = user.id;
+              }
+            }
+            // Remove duplicate user from users list
+            const idx = usersData.users.findIndex(u => u.id === dup.id);
+            if (idx !== -1) usersData.users.splice(idx, 1);
+          }
+          await writeData(data);
+          await writeUsers(usersData);
+        }
       }
     }
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, phoneNumber: user.phoneNumber },
+      { userId: user.id, phoneNumber: user.phone_number || user.phoneNumber },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -854,8 +878,8 @@ app.post('/api/auth/verify-otp', async (req, res) => {
       token,
       user: {
         id: user.id,
-        phoneNumber: user.phoneNumber,
-        createdAt: user.createdAt
+        phoneNumber: user.phone_number || user.phoneNumber,
+        createdAt: user.created_at || user.createdAt
       }
     });
   } catch (error) {
