@@ -94,8 +94,8 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Store OTPs temporarily (in production, use Redis or database)
-const otpStore = new Map();
+// Store OTPs in database for production
+const { pool } = require('./database');
 
 // JWT middleware
 const authenticateToken = (req, res, next) => {
@@ -755,13 +755,27 @@ app.post('/api/auth/send-otp', async (req, res) => {
 
     const normalized = normalizePhoneNumber(phoneNumber);
     const otp = generateOTP();
-    otpStore.set(normalized, { otp, timestamp: Date.now() });
+    
+    // Store OTP in database
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+    await pool.query(
+      'INSERT INTO otps (phone_number, otp, expires_at) VALUES ($1, $2, $3) ON CONFLICT (phone_number) DO UPDATE SET otp = $2, expires_at = $3',
+      [normalized, otp, expiresAt]
+    );
 
+    // For demo purposes, return the OTP in the response
     // In production, integrate with SMS service like Twilio
     console.log(`OTP for ${normalized}: ${otp}`);
-
-    res.json({ success: true, message: 'OTP sent successfully' });
+    
+    res.json({ 
+      success: true, 
+      message: 'OTP sent successfully',
+      // For demo purposes only - remove in production
+      demoOTP: otp,
+      demoMessage: 'For demo purposes, use this OTP: ' + otp
+    });
   } catch (error) {
+    console.error('Error sending OTP:', error);
     res.status(500).json({ error: 'Failed to send OTP' });
   }
 });
@@ -771,14 +785,25 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     const { phoneNumber, otp } = req.body;
 
     const normalized = normalizePhoneNumber(phoneNumber);
-    const storedOTP = otpStore.get(normalized);
-    if (!storedOTP || storedOTP.otp !== otp) {
+    
+    // Get OTP from database
+    const result = await pool.query(
+      'SELECT otp, expires_at FROM otps WHERE phone_number = $1',
+      [normalized]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No OTP found for this number' });
+    }
+    
+    const storedOTP = result.rows[0];
+    if (storedOTP.otp !== otp) {
       return res.status(400).json({ error: 'Invalid OTP' });
     }
 
-    // Check if OTP is expired (5 minutes)
-    if (Date.now() - storedOTP.timestamp > 5 * 60 * 1000) {
-      otpStore.delete(normalized);
+    // Check if OTP is expired
+    if (new Date() > new Date(storedOTP.expires_at)) {
+      await pool.query('DELETE FROM otps WHERE phone_number = $1', [normalized]);
       return res.status(400).json({ error: 'OTP expired' });
     }
 
@@ -823,7 +848,8 @@ app.post('/api/auth/verify-otp', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    otpStore.delete(normalized);
+    // Delete OTP from database after successful verification
+    await pool.query('DELETE FROM otps WHERE phone_number = $1', [normalized]);
 
     res.json({
       success: true,
