@@ -1035,6 +1035,18 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
     const { name, email, phone, dateOfBirth, location, occupation, education, bio } = req.body;
     
+    console.log('Profile update request:', {
+      userId: req.user.userId,
+      name,
+      email,
+      phone,
+      dateOfBirth,
+      location,
+      occupation,
+      education,
+      bio
+    });
+    
     // Try database first, fallback to JSON file
     let updatedUser = null;
     
@@ -1056,14 +1068,19 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
         [name, email, phone, dateOfBirth, location, occupation, education, bio, req.user.userId]
       );
       
+      console.log('Database update result:', result.rows.length, 'rows affected');
+      
       if (result.rows.length > 0) {
         updatedUser = result.rows[0];
+        console.log('Updated user from database:', updatedUser);
       }
     } catch (dbError) {
       console.log('Database not available, using JSON file:', dbError.message);
       // Fallback to JSON file
       const usersData = await readUsers();
       const userIndex = usersData.users.findIndex(u => u.id === req.user.userId);
+      
+      console.log('JSON file user search:', { userIndex, totalUsers: usersData.users.length });
       
       if (userIndex === -1) {
         return res.status(404).json({ error: 'User not found' });
@@ -1084,13 +1101,14 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
       
       await writeUsers(usersData);
       updatedUser = usersData.users[userIndex];
+      console.log('Updated user from JSON:', updatedUser);
     }
     
     if (!updatedUser) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    res.json({
+    const response = {
       id: updatedUser.id,
       phoneNumber: updatedUser.phone_number || updatedUser.phoneNumber,
       email: updatedUser.email,
@@ -1102,7 +1120,10 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
       education: updatedUser.education,
       bio: updatedUser.bio,
       createdAt: updatedUser.created_at || updatedUser.createdAt
-    });
+    };
+    
+    console.log('Profile update response:', response);
+    res.json(response);
   } catch (error) {
     console.error('Error updating profile:', error);
     res.status(500).json({ error: 'Failed to update profile' });
