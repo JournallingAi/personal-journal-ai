@@ -899,20 +899,27 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     // Delete OTP after successful verification
     otpStore.delete(normalized);
 
+    console.log('OTP verification - returning user:', {
+      id: user.id,
+      phoneNumber: user.phone_number || user.phoneNumber,
+      name: user.name,
+      email: user.email
+    });
+
     res.json({
       success: true,
       token,
       user: {
         id: user.id,
         phoneNumber: user.phone_number || user.phoneNumber,
-        email: user.email,
-        name: user.name,
-        picture: user.picture,
-        dateOfBirth: user.date_of_birth || user.dateOfBirth,
-        location: user.location,
-        occupation: user.occupation,
-        education: user.education,
-        bio: user.bio,
+        email: user.email || null,
+        name: user.name || null,
+        picture: user.picture || null,
+        dateOfBirth: user.date_of_birth || user.dateOfBirth || null,
+        location: user.location || null,
+        occupation: user.occupation || null,
+        education: user.education || null,
+        bio: user.bio || null,
         createdAt: user.created_at || user.createdAt
       }
     });
