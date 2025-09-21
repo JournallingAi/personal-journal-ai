@@ -1468,15 +1468,16 @@ app.get('/api/analytics/mood', async (req, res) => {
   }
 });
 
-// Get recent insights
-app.get('/api/insights', async (req, res) => {
+// Get recent insights (requires authentication)
+app.get('/api/insights', authenticateToken, async (req, res) => {
   try {
     let entriesWithInsights = [];
     
     // Try database first, fallback to JSON file
     try {
       const result = await pool.query(
-        'SELECT * FROM entries WHERE ai_insight IS NOT NULL AND ai_insight != \'\' ORDER BY created_at DESC LIMIT 5'
+        'SELECT * FROM entries WHERE user_id = $1 AND ai_insight IS NOT NULL AND ai_insight != \'\' ORDER BY created_at DESC LIMIT 5',
+        [req.user.userId]
       );
       entriesWithInsights = result.rows.map(row => ({
         id: row.id,
@@ -1489,9 +1490,11 @@ app.get('/api/insights', async (req, res) => {
       }));
     } catch (dbError) {
       console.log('Database not available, using JSON file:', dbError.message);
-      // Fallback to JSON file
+      // Fallback to JSON file - filter by user ID for privacy
       const data = await readData();
-      entriesWithInsights = data.entries.filter(entry => entry.aiInsight);
+      entriesWithInsights = data.entries.filter(entry => 
+        entry.aiInsight && entry.userId === req.user.userId
+      );
     }
     
     res.json(entriesWithInsights.slice(0, 5)); // Last 5 insights
