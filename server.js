@@ -7,6 +7,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+const { initDatabase, db } = require('./database');
 require('dotenv').config();
 
 const app = express();
@@ -1391,11 +1392,25 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`CORS origins: ${process.env.NODE_ENV === 'production' ? 'production origins' : 'localhost:3000'}`);
-});
+// Initialize database and start server
+const startServer = async () => {
+  try {
+    // Initialize database tables
+    await initDatabase();
+    
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`CORS origins: ${process.env.NODE_ENV === 'production' ? 'production origins' : 'localhost:3000'}`);
+      console.log('Database initialized successfully');
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
